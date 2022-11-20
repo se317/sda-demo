@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  sda-demo
+
+  SAM Template for sda-demo
+
+Globals:
+  Function:
+    Handler: app.lambda_handler
+    Runtime: python3.9
+    Layers:
+      - !Ref UtilLayer
+    Architectures:
+      - x86_64
+    Timeout: 3
+
+Resources:
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+
+  DynamoDBTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: todo-table
+      PrimaryKey:
+        Name: id
+        Type: String
+
+  GetTodosFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/get_todos
+      Policies:
+        DynamoDBReadPolicy:
+          TableName: !Ref DynamoDBTable
+      Events:
+        GetTodos:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/todo
+            Method: get
+
+  GetTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/get_todo
+      Policies:
+        DynamoDBReadPolicy:
+          TableName: !Ref DynamoDBTable
+      Events:
+        GetTodo:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/todo/{id}
+            Method: get
+
+  CreateTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/create_todo
+      Policies:
+        DynamoDBWritePolicy:
+          TableName: !Ref DynamoDBTable
+      Events:
+        CreateTodo:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/todo
+            Method: put
+
+  UpdateTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/update_todo
+      Policies:
+        DynamoDBWritePolicy:
+          TableName: !Ref DynamoDBTable
+      Events:
+        UpdateTodo:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/todo/{id}
+            Method: put
+
+  DeleteTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/delete_todo
+      Policies:
+        DynamoDBCrudPolicy:
+          TableName: !Ref DynamoDBTable
+      Events:
+        DeleteTodo:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/todo/{id}
+            Method: delete
+
+  UtilLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: util_layer
+      Description: Functionality for SDA Demo
+      ContentUri: layer/util_layer
+      CompatibleArchitectures:
+        - x86_64
+      CompatibleRuntimes:
+        - python3.9
+      RetentionPolicy: Delete
+
+Outputs:
+  GetTodosFunction:
+    Description: "A list of To-Do objects or an empty list if no objects are stored"
+    Value: !Sub "GET - https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1/todo"
+  GetTodoFunction:
+    Description: "Get To-Do object by id"
+    Value: !Sub "GET - https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1/todo/{id}"
+  CreateTodoFunction:
+    Description: "Creates a new To-Do object"
+    Value: !Sub "PUT - https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1/todo"
+  UpdateTodoFunction:
+    Description: "Updates an existing To-Do object"
+    Value: !Sub "PUT - https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1/todo/{id}"
+  DeleteTodoFunction:
+    Description: "Deletes an existing To-Do object"
+    Value: !Sub "DELETE - https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1/todo/{id}"
